@@ -7,18 +7,17 @@ import {
   ThumbsDown,
   Crown,
   Users,
-  Check,
-  Eye,
-  EyeOff,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import { useGame } from "@/lib/avalon/store";
 import { QuestTracker } from "./quest-tracker";
+import type { VoteChoice } from "@/lib/avalon/types";
 
 export function VotePhase() {
   const { state, dispatch } = useGame();
-  const [currentVoterIndex, setCurrentVoterIndex] = useState(0);
-  const [showVote, setShowVote] = useState(true);
-  const [allVoted, setAllVoted] = useState(false);
+  // Track who rejected - everyone else is approve by default
+  const [rejecters, setRejecters] = useState<Set<number>>(new Set());
 
   const proposal = state.currentProposal;
   if (!proposal) return null;
@@ -27,103 +26,34 @@ export function VotePhase() {
   const teamMembers = state.players.filter((p) =>
     proposal.teamMemberIds.includes(p.id)
   );
-
-  const currentVoter = state.players[currentVoterIndex];
-  const hasVoted = proposal.votes[currentVoter?.id] !== undefined;
   const questResults = state.quests.map((q) => q.result);
 
-  // Check if all votes are in
-  const allVotesIn = Object.keys(proposal.votes).length === state.playerCount;
+  const approveCount = state.playerCount - rejecters.size;
+  const rejectCount = rejecters.size;
 
-  const handleVote = (vote: "approve" | "reject") => {
-    dispatch({
-      type: "SUBMIT_VOTE",
-      playerId: currentVoter.id,
-      vote,
+  const toggleReject = (playerId: number) => {
+    setRejecters((prev) => {
+      const next = new Set(prev);
+      if (next.has(playerId)) {
+        next.delete(playerId);
+      } else {
+        next.add(playerId);
+      }
+      return next;
     });
-
-    // Move to next voter or show results
-    if (currentVoterIndex < state.players.length - 1) {
-      setCurrentVoterIndex(currentVoterIndex + 1);
-      setShowVote(true);
-    } else {
-      setAllVoted(true);
-    }
   };
 
-  // If all voted, the reducer already changed phase, so this component
-  // shouldn't render. But for the transition, we show results.
-  if (allVoted || allVotesIn) {
-    const approveCount = Object.values(proposal.votes).filter(
-      (v) => v === "approve"
-    ).length;
-    const rejectCount = Object.values(proposal.votes).filter(
-      (v) => v === "reject"
-    ).length;
-    const approved = approveCount > state.playerCount / 2;
+  const handleSubmitVotes = () => {
+    const votes: Record<number, VoteChoice> = {};
+    state.players.forEach((p) => {
+      votes[p.id] = rejecters.has(p.id) ? "reject" : "approve";
+    });
+    dispatch({ type: "SUBMIT_ALL_VOTES", votes });
+  };
 
-    return (
-      <div className="flex min-h-[100dvh] flex-col items-center px-4 py-4">
-        <QuestTracker
-          playerCount={state.playerCount}
-          currentQuest={state.currentQuest}
-          questResults={questResults}
-          consecutiveRejects={state.consecutiveRejects}
-        />
-
-        <div className="mt-6 w-full max-w-lg animate-scale-in">
-          <div
-            className={`rounded-lg border-2 p-6 text-center ${
-              approved
-                ? "border-good/30 bg-[hsl(210_80%_55%/0.08)]"
-                : "border-evil/30 bg-[hsl(0_72%_51%/0.08)]"
-            }`}
-          >
-            <h2
-              className={`mb-2 text-2xl font-bold ${
-                approved ? "text-good" : "text-evil"
-              }`}
-            >
-              {approved ? "投票通过" : "投票否决"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              赞成 {approveCount} : 反对 {rejectCount}
-            </p>
-          </div>
-
-          {/* Detailed votes */}
-          <div className="mt-4 space-y-1">
-            {state.players.map((player) => {
-              const vote = proposal.votes[player.id];
-              return (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between rounded-md bg-card px-3 py-2"
-                >
-                  <span className="text-sm text-foreground">{player.name}</span>
-                  <span
-                    className={`flex items-center gap-1 text-sm font-medium ${
-                      vote === "approve" ? "text-good" : "text-evil"
-                    }`}
-                  >
-                    {vote === "approve" ? (
-                      <>
-                        <ThumbsUp className="h-3.5 w-3.5" /> 赞成
-                      </>
-                    ) : (
-                      <>
-                        <ThumbsDown className="h-3.5 w-3.5" /> 反对
-                      </>
-                    )}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleReset = () => {
+    setRejecters(new Set());
+  };
 
   return (
     <div className="flex min-h-[100dvh] flex-col px-4 py-4">
@@ -157,62 +87,97 @@ export function VotePhase() {
         </div>
       </div>
 
-      {/* Voting area */}
-      <div className="mt-6 flex-1">
-        {/* Progress */}
-        <div className="mb-4 flex items-center justify-center gap-1">
-          {state.players.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 flex-1 rounded-full transition-all ${
-                i < currentVoterIndex
-                  ? "bg-primary"
-                  : i === currentVoterIndex
-                  ? "bg-primary/50"
-                  : "bg-secondary"
-              }`}
-            />
-          ))}
+      {/* Vote tally */}
+      <div className="mt-4 flex gap-3">
+        <div className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[hsl(210_80%_55%/0.1)] py-3">
+          <ThumbsUp className="h-5 w-5 text-good" />
+          <span className="text-xl font-bold text-good">{approveCount}</span>
+          <span className="text-xs text-good/70">赞成</span>
         </div>
-
-        <div className="animate-scale-in rounded-lg border border-border bg-card p-6 text-center">
-          <p className="mb-1 text-xs text-muted-foreground">
-            第 {currentVoterIndex + 1}/{state.playerCount} 位投票
-          </p>
-          <h2 className="mb-6 text-xl font-bold text-primary">
-            {currentVoter.name}
-          </h2>
-
-          {showVote ? (
-            <div className="flex gap-3">
-              <Button
-                className="flex-1 bg-good text-good-foreground hover:bg-good/90"
-                size="lg"
-                onClick={() => handleVote("approve")}
-              >
-                <ThumbsUp className="mr-2 h-5 w-5" />
-                赞成
-              </Button>
-              <Button
-                className="flex-1 bg-evil text-evil-foreground hover:bg-evil/90"
-                size="lg"
-                onClick={() => handleVote("reject")}
-              >
-                <ThumbsDown className="mr-2 h-5 w-5" />
-                反对
-              </Button>
-            </div>
-          ) : (
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => setShowVote(true)}
-            >
-              <Eye className="mr-2 h-5 w-5" />
-              显示投票按钮
-            </Button>
-          )}
+        <div className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[hsl(0_72%_51%/0.1)] py-3">
+          <ThumbsDown className="h-5 w-5 text-evil" />
+          <span className="text-xl font-bold text-evil">{rejectCount}</span>
+          <span className="text-xs text-evil/70">反对</span>
         </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="mt-4 rounded-md bg-primary/5 px-3 py-2">
+        <p className="text-center text-xs text-primary">
+          线下比手势投票后，主持人点击投反对票的玩家编号，未点击即为赞成
+        </p>
+      </div>
+
+      {/* Player grid - tap to toggle reject */}
+      <div className="mt-3 flex-1">
+        <div className="grid grid-cols-2 gap-2">
+          {state.players.map((player) => {
+            const isReject = rejecters.has(player.id);
+            const isOnTeam = proposal.teamMemberIds.includes(player.id);
+
+            return (
+              <button
+                key={player.id}
+                onClick={() => toggleReject(player.id)}
+                className={`relative flex items-center gap-3 rounded-lg border-2 px-3 py-3 text-left transition-all ${
+                  isReject
+                    ? "border-evil bg-[hsl(0_72%_51%/0.1)]"
+                    : "border-good/30 bg-[hsl(210_80%_55%/0.05)]"
+                }`}
+              >
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                    isReject
+                      ? "bg-evil text-evil-foreground"
+                      : "bg-good/20 text-good"
+                  }`}
+                >
+                  {isReject ? (
+                    <ThumbsDown className="h-4 w-4" />
+                  ) : (
+                    <ThumbsUp className="h-4 w-4" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    <span className="text-muted-foreground">{player.id + 1}.</span>{" "}
+                    {player.name}
+                  </p>
+                  <p
+                    className={`text-xs font-medium ${
+                      isReject ? "text-evil" : "text-good"
+                    }`}
+                  >
+                    {isReject ? "反对" : "赞成"}
+                    {isOnTeam && (
+                      <span className="ml-1 text-primary">{"(队员)"}</span>
+                    )}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="sticky bottom-4 mt-4 flex gap-3">
+        <Button
+          variant="outline"
+          size="lg"
+          className="shrink-0"
+          onClick={handleReset}
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+        <Button
+          className="flex-1"
+          size="lg"
+          onClick={handleSubmitVotes}
+        >
+          确认票型
+          <ChevronRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

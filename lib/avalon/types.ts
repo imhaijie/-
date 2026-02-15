@@ -91,7 +91,6 @@ export const ROLE_INFO: Record<Role, RoleInfo> = {
 };
 
 // Team size for each quest based on player count
-// Index: [playerCount - 5][questNumber - 1]
 export const QUEST_TEAM_SIZE: Record<number, number[]> = {
   5: [2, 3, 2, 3, 3],
   6: [2, 3, 4, 3, 4],
@@ -146,7 +145,7 @@ export interface TeamProposal {
   leaderId: number;
   teamMemberIds: number[];
   votes: Record<number, VoteChoice>;
-  approved: boolean | null; // null = not yet voted
+  approved: boolean | null;
 }
 
 export interface QuestRecord {
@@ -162,16 +161,17 @@ export interface QuestRecord {
 
 export type GamePhase =
   | "setup"
-  | "night"
-  | "night_reveal"
-  | "team_building"
-  | "team_vote"
-  | "vote_result"
-  | "quest"
-  | "quest_result"
+  | "night"         // Host narration scripts
+  | "team_building" // Captain selects team + speech
+  | "team_vote"     // Host records votes
+  | "vote_result"   // Display vote result
+  | "quest"         // Host records quest cards
+  | "quest_result"  // Display quest result
   | "lady_of_lake"
   | "assassination"
   | "game_over";
+
+export type SpeechDirection = "left" | "right";
 
 export interface GameState {
   phase: GamePhase;
@@ -192,6 +192,7 @@ export interface GameState {
   ladyOfLakeHolder: number | null;
   ladyOfLakeHistory: Array<{ from: number; to: number; result: Alignment }>;
   useLadyOfLake: boolean;
+  speechDirection: SpeechDirection;
 }
 
 export const MAX_REJECTS = 5;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Target, Skull, AlertTriangle, Crown } from "lucide-react";
+import { Target, Skull, AlertTriangle } from "lucide-react";
 import { useGame } from "@/lib/avalon/store";
 
 export function AssassinationPhase() {
@@ -11,7 +11,6 @@ export function AssassinationPhase() {
   const [confirmMode, setConfirmMode] = useState(false);
 
   const assassin = state.players.find((p) => p.role === "assassin");
-  const goodPlayers = state.players.filter((p) => p.alignment === "good");
 
   const handleConfirmKill = () => {
     if (selectedTarget === null) return;
@@ -22,7 +21,7 @@ export function AssassinationPhase() {
     <div className="flex min-h-[100dvh] flex-col items-center px-4 py-6">
       <div className="mb-6 text-center">
         <Target className="mx-auto mb-3 h-12 w-12 text-evil" />
-        <h1 className="mb-1 text-2xl font-bold text-evil">
+        <h1 className="font-serif mb-1 text-2xl font-bold text-evil">
           刺客刺杀环节
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -33,16 +32,13 @@ export function AssassinationPhase() {
       <div className="w-full max-w-lg">
         <div className="mb-4 rounded-lg border border-evil/20 bg-[hsl(0_72%_51%/0.08)] p-4">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-evil" />
+            <AlertTriangle className="h-5 w-5 shrink-0 text-evil" />
             <div>
               <p className="text-sm font-medium text-evil">
                 刺客：{assassin?.name}
               </p>
               <p className="text-xs text-muted-foreground">
-                邪恶阵营讨论后，由刺客选择一名玩家刺杀
-              </p>
-              <p className="text-xs text-muted-foreground">
-                如果刺中梅林，邪恶方获胜
+                邪恶阵营讨论后，由刺客选择一名玩家刺杀。如果刺中梅林，邪恶方获胜。
               </p>
             </div>
           </div>
@@ -54,7 +50,7 @@ export function AssassinationPhase() {
               选择刺杀目标
             </h3>
             <div className="space-y-2">
-              {goodPlayers.map((player) => (
+              {state.players.map((player) => (
                 <button
                   key={player.id}
                   onClick={() => setSelectedTarget(player.id)}

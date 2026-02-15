@@ -10,6 +10,7 @@ import { SetupPhase } from "./setup-phase";
 import { NightPhase } from "./night-phase";
 import { TeamBuildingPhase } from "./team-building-phase";
 import { VotePhase } from "./vote-phase";
+import { VoteResultPhase } from "./vote-result-phase";
 import { QuestPhase } from "./quest-phase";
 import { QuestResultPhase } from "./quest-result-phase";
 import { AssassinationPhase } from "./assassination-phase";
@@ -23,18 +24,16 @@ export function GameProvider() {
   const showLog =
     state.phase !== "setup" &&
     state.phase !== "night" &&
-    state.phase !== "night_reveal" &&
     state.phase !== "game_over";
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>
       <div className="relative min-h-[100dvh]">
         {state.phase === "setup" && <SetupPhase />}
-        {(state.phase === "night" || state.phase === "night_reveal") && (
-          <NightPhase />
-        )}
+        {state.phase === "night" && <NightPhase />}
         {state.phase === "team_building" && <TeamBuildingPhase />}
         {state.phase === "team_vote" && <VotePhase />}
+        {state.phase === "vote_result" && <VoteResultPhase />}
         {state.phase === "quest" && <QuestPhase />}
         {state.phase === "quest_result" && <QuestResultPhase />}
         {state.phase === "lady_of_lake" && <LadyOfLakePhase />}

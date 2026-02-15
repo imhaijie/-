@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -8,8 +8,10 @@ import {
   Check,
   ChevronRight,
   MessageSquare,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
-import { QUEST_TEAM_SIZE } from "@/lib/avalon/types";
+import { QUEST_TEAM_SIZE, type SpeechDirection } from "@/lib/avalon/types";
 import { useGame } from "@/lib/avalon/store";
 import { QuestTracker } from "./quest-tracker";
 import { SpeechTimer } from "./speech-timer";
@@ -20,11 +22,31 @@ export function TeamBuildingPhase() {
     new Set()
   );
   const [showTimer, setShowTimer] = useState(false);
-  const [currentSpeaker, setCurrentSpeaker] = useState(0);
+  const [currentSpeakerIdx, setCurrentSpeakerIdx] = useState(0);
+  const [speechDirection, setSpeechDirection] = useState<SpeechDirection>(state.speechDirection);
 
   const leader = state.players[state.currentLeaderIndex];
   const teamSize =
     QUEST_TEAM_SIZE[state.playerCount][state.currentQuest - 1];
+
+  // Generate speech order based on captain's position and chosen direction
+  const speechOrder = useMemo(() => {
+    const order: number[] = [];
+    const count = state.playerCount;
+    const leaderIdx = state.currentLeaderIndex;
+
+    for (let i = 1; i < count; i++) {
+      const offset = speechDirection === "left" ? i : -i;
+      const idx = ((leaderIdx + offset) % count + count) % count;
+      order.push(idx);
+    }
+    // Captain speaks last
+    order.push(leaderIdx);
+    return order;
+  }, [state.currentLeaderIndex, state.playerCount, speechDirection]);
+
+  const currentSpeaker = state.players[speechOrder[currentSpeakerIdx]];
+  const isLastSpeaker = currentSpeakerIdx >= speechOrder.length - 1;
 
   const toggleMember = (id: number) => {
     setSelectedMembers((prev) => {
@@ -43,6 +65,18 @@ export function TeamBuildingPhase() {
       type: "SUBMIT_TEAM",
       teamMemberIds: Array.from(selectedMembers),
     });
+  };
+
+  const handleNextSpeaker = () => {
+    if (!isLastSpeaker) {
+      setCurrentSpeakerIdx(currentSpeakerIdx + 1);
+    }
+  };
+
+  const handleDirectionChange = (dir: SpeechDirection) => {
+    setSpeechDirection(dir);
+    setCurrentSpeakerIdx(0);
+    dispatch({ type: "SET_SPEECH_DIRECTION", direction: dir });
   };
 
   const questResults = state.quests.map((q) => q.result);
@@ -67,7 +101,7 @@ export function TeamBuildingPhase() {
             <div className="flex items-center gap-2">
               <Crown className="h-4 w-4 text-primary" />
               <span className="font-medium text-foreground">
-                队长: {leader.name}
+                队长: {leader.name}（{state.currentLeaderIndex + 1}号）
               </span>
             </div>
           </div>
@@ -80,7 +114,7 @@ export function TeamBuildingPhase() {
         </div>
       </div>
 
-      {/* Speech timer toggle */}
+      {/* Speech timer section */}
       <div className="mt-3">
         <Button
           variant="outline"
@@ -94,29 +128,78 @@ export function TeamBuildingPhase() {
 
         {showTimer && (
           <div className="mt-3 rounded-lg border border-border bg-card p-4">
-            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-2">
-              {state.players.map((p, i) => (
-                <Button
-                  key={p.id}
-                  variant={currentSpeaker === i ? "default" : "outline"}
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() => setCurrentSpeaker(i)}
-                >
-                  {p.name}
-                </Button>
-              ))}
+            {/* Direction selector */}
+            <div className="mb-3 flex items-center justify-center gap-2">
+              <span className="text-xs text-muted-foreground">发言方向：</span>
+              <Button
+                variant={speechDirection === "left" ? "default" : "outline"}
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => handleDirectionChange("left")}
+              >
+                <ArrowRight className="h-3 w-3" />
+                左手边开始
+              </Button>
+              <Button
+                variant={speechDirection === "right" ? "default" : "outline"}
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => handleDirectionChange("right")}
+              >
+                <ArrowLeft className="h-3 w-3" />
+                右手边开始
+              </Button>
             </div>
+
+            {/* Speaker order indicator */}
+            <div className="mb-3 flex items-center gap-1 overflow-x-auto pb-1">
+              {speechOrder.map((playerIdx, i) => {
+                const p = state.players[playerIdx];
+                const isCurrent = i === currentSpeakerIdx;
+                const isDone = i < currentSpeakerIdx;
+                const isCaptain = playerIdx === state.currentLeaderIndex;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setCurrentSpeakerIdx(i)}
+                    className={`relative shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
+                      isCurrent
+                        ? "bg-primary text-primary-foreground"
+                        : isDone
+                        ? "bg-secondary/60 text-muted-foreground line-through"
+                        : "bg-secondary text-foreground"
+                    }`}
+                  >
+                    {isCaptain && (
+                      <Crown className="mr-0.5 inline h-3 w-3" />
+                    )}
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+
             <SpeechTimer
-              key={currentSpeaker}
+              key={`${currentSpeakerIdx}-${speechDirection}`}
               duration={state.speechTimerDuration}
-              playerName={state.players[currentSpeaker].name}
-              onSkip={() =>
-                setCurrentSpeaker(
-                  (currentSpeaker + 1) % state.players.length
-                )
-              }
+              playerName={currentSpeaker.name}
+              onSkip={!isLastSpeaker ? handleNextSpeaker : undefined}
+              onComplete={() => {
+                // Auto-advance on timer completion handled by the alert
+              }}
             />
+
+            {!isLastSpeaker && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={handleNextSpeaker}
+              >
+                下一位发言
+                <ChevronRight className="ml-1 h-3 w-3" />
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -124,7 +207,7 @@ export function TeamBuildingPhase() {
       {/* Player selection grid */}
       <div className="mt-4 flex-1">
         <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-          选择出征队员
+          队长选择出征队员（点击选择/取消）
         </h3>
         <div className="grid grid-cols-2 gap-2">
           {state.players.map((player) => {
