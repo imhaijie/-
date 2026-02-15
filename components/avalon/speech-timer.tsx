@@ -2,59 +2,21 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw, SkipForward, Bell, BellOff } from "lucide-react";
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Bell,
+  BellOff,
+} from "lucide-react";
+import { unlockAudio, playTick, playAlert } from "@/lib/avalon/audio";
 
 interface SpeechTimerProps {
   duration: number;
   playerName: string;
   onComplete?: () => void;
   onSkip?: () => void;
-}
-
-function playAlertSound() {
-  try {
-    const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-
-    // Play 3 short beeps
-    const playBeep = (startTime: number, freq: number, dur: number) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = freq;
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.3, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, startTime + dur);
-      osc.start(startTime);
-      osc.stop(startTime + dur);
-    };
-
-    const now = audioCtx.currentTime;
-    playBeep(now, 880, 0.15);
-    playBeep(now + 0.2, 880, 0.15);
-    playBeep(now + 0.4, 1100, 0.3);
-  } catch {
-    // Silently fail if AudioContext not supported
-  }
-}
-
-function playTickSound() {
-  try {
-    const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.frequency.value = 600;
-    osc.type = "sine";
-    const now = audioCtx.currentTime;
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-    osc.start(now);
-    osc.stop(now + 0.08);
-  } catch {
-    // Silently fail
-  }
 }
 
 export function SpeechTimer({
@@ -74,7 +36,7 @@ export function SpeechTimer({
   const isWarning = timeLeft <= 10 && timeLeft > 0;
   const isExpired = timeLeft <= 0;
 
-  const radius = 44;
+  const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
@@ -84,12 +46,12 @@ export function SpeechTimer({
         setTimeLeft((prev) => {
           const next = prev - 1;
           if (next <= 10 && next > 0 && soundEnabled) {
-            playTickSound();
+            playTick();
           }
           if (next <= 0) {
             setIsRunning(false);
             if (soundEnabled && !hasPlayedAlertRef.current) {
-              playAlertSound();
+              playAlert();
               hasPlayedAlertRef.current = true;
             }
             setShowExpiredAlert(true);
@@ -114,6 +76,16 @@ export function SpeechTimer({
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, [duration]);
 
+  const handlePlayPause = () => {
+    // Unlock audio on user gesture
+    unlockAudio();
+    if (isExpired) {
+      handleReset();
+    } else {
+      setIsRunning(!isRunning);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -121,9 +93,10 @@ export function SpeechTimer({
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-4">
+      {/* Header */}
       <div className="flex items-center gap-2">
-        <p className="text-sm font-medium text-foreground">
+        <p className="text-sm font-medium text-foreground lg:text-base">
           {playerName} 发言中
         </p>
         <button
@@ -132,46 +105,46 @@ export function SpeechTimer({
           aria-label={soundEnabled ? "关闭提示音" : "开启提示音"}
         >
           {soundEnabled ? (
-            <Bell className="h-3.5 w-3.5" />
+            <Bell className="h-4 w-4" />
           ) : (
-            <BellOff className="h-3.5 w-3.5" />
+            <BellOff className="h-4 w-4" />
           )}
         </button>
       </div>
 
       {/* Expired overlay alert */}
       {showExpiredAlert && (
-        <div className="animate-scale-in rounded-lg border-2 border-evil bg-[hsl(0_72%_51%/0.15)] px-6 py-3 text-center">
-          <p className="text-lg font-bold text-evil animate-pulse">
+        <div className="w-full animate-scale-in rounded-lg border-2 border-destructive bg-destructive/15 px-6 py-4 text-center">
+          <p className="animate-pulse text-xl font-bold text-destructive lg:text-2xl">
             发言时间到！
           </p>
         </div>
       )}
 
       {/* Circular timer */}
-      <div className="relative flex h-28 w-28 items-center justify-center">
-        <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
+      <div className="relative flex h-36 w-36 items-center justify-center lg:h-44 lg:w-44">
+        <svg className="-rotate-90" viewBox="0 0 120 120" width="100%" height="100%">
           <circle
-            cx="50"
-            cy="50"
+            cx="60"
+            cy="60"
             r={radius}
             fill="none"
             stroke="hsl(var(--secondary))"
-            strokeWidth="5"
+            strokeWidth="6"
           />
           <circle
-            cx="50"
-            cy="50"
+            cx="60"
+            cy="60"
             r={radius}
             fill="none"
             stroke={
               isExpired
                 ? "hsl(var(--destructive))"
                 : isWarning
-                ? "hsl(43 74% 49%)"
-                : "hsl(var(--primary))"
+                  ? "hsl(43 74% 49%)"
+                  : "hsl(var(--primary))"
             }
-            strokeWidth="5"
+            strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -179,12 +152,12 @@ export function SpeechTimer({
           />
         </svg>
         <span
-          className={`absolute text-2xl font-bold tabular-nums ${
+          className={`absolute text-3xl font-bold tabular-nums lg:text-4xl ${
             isExpired
               ? "text-destructive"
               : isWarning
-              ? "text-primary animate-pulse"
-              : "text-foreground"
+                ? "animate-pulse text-primary"
+                : "text-foreground"
           }`}
         >
           {formatTime(timeLeft)}
@@ -192,11 +165,11 @@ export function SpeechTimer({
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="h-10 w-10"
           onClick={handleReset}
         >
           <RotateCcw className="h-4 w-4" />
@@ -204,26 +177,20 @@ export function SpeechTimer({
         <Button
           variant={isRunning ? "secondary" : "default"}
           size="icon"
-          className="h-12 w-12"
-          onClick={() => {
-            if (isExpired) {
-              handleReset();
-            } else {
-              setIsRunning(!isRunning);
-            }
-          }}
+          className="h-14 w-14"
+          onClick={handlePlayPause}
         >
           {isRunning ? (
-            <Pause className="h-5 w-5" />
+            <Pause className="h-6 w-6" />
           ) : (
-            <Play className="h-5 w-5" />
+            <Play className="h-6 w-6" />
           )}
         </Button>
         {onSkip && (
           <Button
             variant="outline"
             size="icon"
-            className="h-9 w-9"
+            className="h-10 w-10"
             onClick={() => {
               handleReset();
               onSkip();
