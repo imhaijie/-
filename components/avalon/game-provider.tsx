@@ -35,7 +35,7 @@ export function GameProvider() {
   // Auto-save snapshot on phase change
   useEffect(() => {
     if (state.phase !== previousPhase && state.phase !== "setup") {
-      const newSnapshot = saveSnapshot(state);
+      saveSnapshot(state);
       setSnapshots(getSnapshots());
       setPreviousPhase(state.phase);
     }

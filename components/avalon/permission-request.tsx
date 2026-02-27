@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, Bell, CheckCircle2, XCircle, Shield } from "lucide-react";
 import {
@@ -15,11 +15,15 @@ interface PermissionRequestProps {
 }
 
 export function PermissionRequest({ onComplete }: PermissionRequestProps) {
-  const [audioGranted, setAudioGranted] = useState(isAudioUnlocked());
-  const [notificationGranted, setNotificationGranted] = useState(
-    isNotificationGranted()
-  );
+  const [audioGranted, setAudioGranted] = useState(false);
+  const [notificationGranted, setNotificationGranted] = useState(false);
   const [requesting, setRequesting] = useState(false);
+
+  // Check initial permission state on mount (client-side only)
+  useEffect(() => {
+    setAudioGranted(isAudioUnlocked());
+    setNotificationGranted(isNotificationGranted());
+  }, []);
 
   const handleRequestPermissions = async () => {
     setRequesting(true);

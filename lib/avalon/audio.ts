@@ -6,11 +6,20 @@ let ctx: AudioContext | null = null;
 let audioPermissionGranted = false;
 let notificationPermissionGranted = false;
 
-function getCtx(): AudioContext {
+// Check if we're in a browser environment
+function isBrowser(): boolean {
+  return typeof window !== "undefined";
+}
+
+function getCtx(): AudioContext | null {
+  if (!isBrowser()) return null;
+  
   if (!ctx) {
-    ctx = new (window.AudioContext ||
+    const AudioContextClass = window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext)();
+        .webkitAudioContext;
+    if (!AudioContextClass) return null;
+    ctx = new AudioContextClass();
   }
   // resume() is a no-op if already running, but required once after creation
   if (ctx.state === "suspended") {
@@ -37,7 +46,7 @@ export function isNotificationGranted(): boolean {
  * Request notification permission
  */
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (!("Notification" in window)) {
+  if (!isBrowser() || !("Notification" in window)) {
     return false;
   }
   
@@ -59,6 +68,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * Show a notification
  */
 export function showNotification(title: string, body?: string) {
+  if (!isBrowser()) return;
   if (notificationPermissionGranted && "Notification" in window) {
     new Notification(title, { body, icon: "/favicon.ico" });
   }
@@ -70,8 +80,12 @@ export function showNotification(title: string, body?: string) {
  * Returns true if audio was successfully unlocked.
  */
 export function unlockAudio(): boolean {
+  if (!isBrowser()) return false;
+  
   try {
     const c = getCtx();
+    if (!c) return false;
+    
     if (c.state === "suspended") {
       c.resume();
     }
@@ -103,8 +117,12 @@ export async function requestAllPermissions(): Promise<{
 
 /** Short tick for countdown (last 10 seconds) */
 export function playTick() {
+  if (!isBrowser()) return;
+  
   try {
     const c = getCtx();
+    if (!c) return;
+    
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.connect(gain);
@@ -123,8 +141,11 @@ export function playTick() {
 
 /** Three-beep alert when time runs out */
 export function playAlert() {
+  if (!isBrowser()) return;
+  
   try {
     const c = getCtx();
+    if (!c) return;
 
     const beep = (start: number, freq: number, dur: number, volume = 0.35) => {
       const osc = c.createOscillator();
@@ -154,8 +175,12 @@ export function playAlert() {
 
 /** Play success sound */
 export function playSuccess() {
+  if (!isBrowser()) return;
+  
   try {
     const c = getCtx();
+    if (!c) return;
+    
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.connect(gain);
@@ -176,8 +201,12 @@ export function playSuccess() {
 
 /** Play error/fail sound */
 export function playError() {
+  if (!isBrowser()) return;
+  
   try {
     const c = getCtx();
+    if (!c) return;
+    
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.connect(gain);
