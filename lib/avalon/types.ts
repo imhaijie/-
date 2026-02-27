@@ -6,6 +6,7 @@ export type Role =
   | "merlin"
   | "percival"
   | "loyal_servant"
+  | "unfaithful_servant" // New: good alignment but can play fail cards
   | "assassin"
   | "morgana"
   | "mordred"
@@ -21,6 +22,7 @@ export interface RoleInfo {
   alignment: Alignment;
   description: string;
   isSpecial: boolean;
+  canPlayFail?: boolean; // For unfaithful servant
 }
 
 export const ROLE_INFO: Record<Role, RoleInfo> = {
@@ -47,6 +49,15 @@ export const ROLE_INFO: Record<Role, RoleInfo> = {
     alignment: "good",
     description: "亚瑟王的忠诚仆从，没有特殊能力",
     isSpecial: false,
+  },
+  unfaithful_servant: {
+    id: "unfaithful_servant",
+    name: "Unfaithful Servant",
+    nameZh: "不忠诚的仆人",
+    alignment: "good",
+    description: "好人阵营，但可以出失败牌。可能是内鬼、被胁迫者或有自己的目的",
+    isSpecial: true,
+    canPlayFail: true, // Special flag for quest phase
   },
   assassin: {
     id: "assassin",
@@ -98,6 +109,8 @@ export const QUEST_TEAM_SIZE: Record<number, number[]> = {
   8: [3, 4, 4, 5, 5],
   9: [3, 4, 4, 5, 5],
   10: [3, 4, 4, 5, 5],
+  11: [3, 4, 4, 5, 5],
+  12: [3, 4, 4, 5, 5],
 };
 
 // Quests that require 2 fail cards (4th quest for 7+ players)
@@ -108,6 +121,8 @@ export const DOUBLE_FAIL_QUESTS: Record<number, number[]> = {
   8: [4],
   9: [4],
   10: [4],
+  11: [4],
+  12: [4],
 };
 
 // Good/Evil count per player count
@@ -118,6 +133,8 @@ export const ALIGNMENT_COUNT: Record<number, { good: number; evil: number }> = {
   8: { good: 5, evil: 3 },
   9: { good: 6, evil: 3 },
   10: { good: 6, evil: 4 },
+  11: { good: 7, evil: 4 },
+  12: { good: 8, evil: 4 },
 };
 
 // Recommended role configs per player count
@@ -128,6 +145,8 @@ export const RECOMMENDED_ROLES: Record<number, Role[]> = {
   8: ["merlin", "percival", "loyal_servant", "loyal_servant", "loyal_servant", "assassin", "morgana", "minion"],
   9: ["merlin", "percival", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "assassin", "morgana", "minion"],
   10: ["merlin", "percival", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "assassin", "morgana", "oberon", "minion"],
+  11: ["merlin", "percival", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "assassin", "morgana", "oberon", "minion"],
+  12: ["merlin", "percival", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "loyal_servant", "assassin", "morgana", "oberon", "minion"],
 };
 
 export type VoteChoice = "approve" | "reject";
@@ -198,3 +217,26 @@ export interface GameState {
 export const MAX_REJECTS = 5;
 export const QUESTS_TO_WIN = 3;
 export const TOTAL_QUESTS = 5;
+
+// History snapshot for undo functionality
+export interface HistorySnapshot {
+  id: string;
+  timestamp: number;
+  label: string; // Human-readable description
+  phase: GamePhase;
+  state: GameState;
+}
+
+// Vote history entry for display
+export interface VoteHistoryEntry {
+  questNumber: number;
+  proposalIndex: number;
+  leaderId: number;
+  leaderName: string;
+  teamMemberIds: number[];
+  teamMemberNames: string[];
+  votes: Record<number, VoteChoice>;
+  approved: boolean;
+  approveCount: number;
+  rejectCount: number;
+}

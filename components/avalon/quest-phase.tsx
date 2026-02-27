@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, Skull, Swords, ChevronRight, Minus, Plus } from "lucide-react";
+import { Shield, Skull, Swords, ChevronRight, Minus, Plus, AlertTriangle, Info } from "lucide-react";
 import { useGame } from "@/lib/avalon/store";
-import { QuestTracker } from "./quest-tracker";
+import { ROLE_INFO } from "@/lib/avalon/types";
 
 export function QuestPhase() {
   const { state, dispatch } = useGame();
@@ -19,6 +19,15 @@ export function QuestPhase() {
   const currentQuest = state.quests[state.quests.length - 1];
   const questResults = state.quests.map((q) => q.result);
   const teamSize = teamMembers.length;
+
+  // Check if there's an unfaithful servant in the game
+  const hasUnfaithfulServant = state.roles.includes("unfaithful_servant");
+  
+  // Count potential fail cards (evil players + unfaithful servant)
+  const teamMemberRoles = teamMembers.map((m) => m.role);
+  const evilOnTeam = teamMemberRoles.filter((r) => r && ROLE_INFO[r]?.alignment === "evil").length;
+  const unfaithfulOnTeam = teamMemberRoles.filter((r) => r === "unfaithful_servant").length;
+  const maxPossibleFails = evilOnTeam + unfaithfulOnTeam;
 
   const handleSubmit = () => {
     dispatch({ type: "SUBMIT_QUEST_RESULT", failCount });
@@ -66,10 +75,22 @@ export function QuestPhase() {
         </div>
 
         {/* Instructions */}
-        <div className="mb-4 rounded-md bg-primary/5 px-3 py-2">
-          <p className="text-center text-xs text-primary">
-            收集队员的任务卡牌后，请主持人洗匀后翻开，统计失败牌数量
-          </p>
+        <div className="mb-4 space-y-2">
+          <div className="rounded-md bg-primary/5 px-3 py-2">
+            <p className="text-center text-xs text-primary">
+              收集队员的任务卡牌后，请主持人洗匀后翻开，统计失败牌数量
+            </p>
+          </div>
+          
+          {/* Unfaithful servant warning */}
+          {hasUnfaithfulServant && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                本局存在「不忠诚的仆人」，好人阵营也可能出失败牌！
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Fail count selector */}

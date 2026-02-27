@@ -84,6 +84,15 @@ function generateNarration(roles: Role[]): NarrationStep[] {
     });
   }
 
+  // Unfaithful servant reminder (no special night action, but remind players)
+  if (roleSet.has("unfaithful_servant")) {
+    steps.push({
+      title: "不忠诚的仆人提示",
+      script: "本局存在「不忠诚的仆人」。\n\n不忠诚的仆人属于好人阵营，但可以在任务中出失败牌。\n\n请不忠诚的仆人记住自己的特殊身份。",
+      highlight: "neutral",
+    });
+  }
+
   steps.push({
     title: "天亮了",
     script: "天亮了！所有人请睁开眼睛。\n\n游戏正式开始！",
@@ -217,7 +226,7 @@ export function NightPhase() {
             </>
           ) : (
             <>
-              下一步
+              下一���
               <ChevronRight className="ml-2 h-4 w-4" />
             </>
           )}

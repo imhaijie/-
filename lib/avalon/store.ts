@@ -12,6 +12,8 @@ import type {
   TeamProposal,
   Alignment,
   SpeechDirection,
+  HistorySnapshot,
+  VoteHistoryEntry,
 } from "./types";
 import {
   QUEST_TEAM_SIZE,
@@ -114,11 +116,106 @@ export function createQuestRecord(
 }
 
 // ============================================================
+// History Management
+// ============================================================
+let historySnapshots: HistorySnapshot[] = [];
+let snapshotIdCounter = 0;
+
+function generateSnapshotId(): string {
+  return `snapshot_${++snapshotIdCounter}_${Date.now()}`;
+}
+
+function getPhaseLabel(phase: GamePhase, state: GameState): string {
+  const questNum = state.currentQuest;
+  const leaderName = state.players[state.currentLeaderIndex]?.name || "";
+  
+  switch (phase) {
+    case "setup": return "游戏设置";
+    case "night": return "夜晚阶段";
+    case "team_building": return `第${questNum}轮 - ${leaderName}组队中`;
+    case "team_vote": return `第${questNum}轮 - 投票中`;
+    case "vote_result": return `第${questNum}轮 - 投票结果`;
+    case "quest": return `第${questNum}轮 - 执行任务`;
+    case "quest_result": return `第${questNum}轮 - 任务结果`;
+    case "lady_of_lake": return `第${questNum}轮 - 湖中女士`;
+    case "assassination": return "刺杀阶段";
+    case "game_over": return "游戏结束";
+    default: return phase;
+  }
+}
+
+export function saveSnapshot(state: GameState, label?: string): HistorySnapshot {
+  const snapshot: HistorySnapshot = {
+    id: generateSnapshotId(),
+    timestamp: Date.now(),
+    label: label || getPhaseLabel(state.phase, state),
+    phase: state.phase,
+    state: JSON.parse(JSON.stringify(state)), // Deep clone
+  };
+  historySnapshots.push(snapshot);
+  return snapshot;
+}
+
+export function getSnapshots(): HistorySnapshot[] {
+  return [...historySnapshots];
+}
+
+export function restoreSnapshot(snapshotId: string): GameState | null {
+  const index = historySnapshots.findIndex(s => s.id === snapshotId);
+  if (index === -1) return null;
+  
+  // Remove all snapshots after this one
+  historySnapshots = historySnapshots.slice(0, index + 1);
+  
+  return JSON.parse(JSON.stringify(historySnapshots[index].state));
+}
+
+export function clearHistory(): void {
+  historySnapshots = [];
+  snapshotIdCounter = 0;
+}
+
+// Extract vote history from game state
+export function getVoteHistory(state: GameState): VoteHistoryEntry[] {
+  const history: VoteHistoryEntry[] = [];
+  
+  state.quests.forEach((quest) => {
+    quest.proposals.forEach((proposal, proposalIndex) => {
+      if (Object.keys(proposal.votes).length > 0) {
+        const leader = state.players.find(p => p.id === proposal.leaderId);
+        const teamMembers = state.players.filter(p => proposal.teamMemberIds.includes(p.id));
+        const approveCount = Object.values(proposal.votes).filter(v => v === "approve").length;
+        const rejectCount = Object.values(proposal.votes).filter(v => v === "reject").length;
+        
+        history.push({
+          questNumber: quest.questNumber,
+          proposalIndex,
+          leaderId: proposal.leaderId,
+          leaderName: leader?.name || `Player ${proposal.leaderId + 1}`,
+          teamMemberIds: proposal.teamMemberIds,
+          teamMemberNames: teamMembers.map(p => p.name),
+          votes: proposal.votes,
+          approved: proposal.approved || false,
+          approveCount,
+          rejectCount,
+        });
+      }
+    });
+  });
+  
+  return history;
+}
+
+// ============================================================
 // Game State Context
 // ============================================================
 export const GameContext = createContext<{
   state: GameState;
   dispatch: (action: GameAction) => void;
+  snapshots: HistorySnapshot[];
+  saveCurrentSnapshot: (label?: string) => void;
+  restoreToSnapshot: (snapshotId: string) => void;
+  voteHistory: VoteHistoryEntry[];
 } | null>(null);
 
 export function useGame() {
@@ -142,7 +239,8 @@ export type GameAction =
   | { type: "SUBMIT_ASSASSINATION"; targetId: number }
   | { type: "SUBMIT_LADY_OF_LAKE"; targetId: number }
   | { type: "RESET_GAME" }
-  | { type: "SET_PHASE"; phase: GamePhase };
+  | { type: "SET_PHASE"; phase: GamePhase }
+  | { type: "RESTORE_STATE"; state: GameState };
 
 // ============================================================
 // Reducer
@@ -358,10 +456,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "RESET_GAME":
+      clearHistory();
       return createInitialState();
 
     case "SET_PHASE":
       return { ...state, phase: action.phase };
+
+    case "RESTORE_STATE":
+      return action.state;
 
     default:
       return state;

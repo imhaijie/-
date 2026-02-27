@@ -41,7 +41,7 @@ export function SetupPhase() {
 
   const handlePlayerCountChange = useCallback(
     (delta: number) => {
-      const newCount = Math.min(10, Math.max(5, playerCount + delta));
+      const newCount = Math.min(12, Math.max(5, playerCount + delta));
       setPlayerCount(newCount);
       setRoles(RECOMMENDED_ROLES[newCount]);
       setPlayerNames((prev) => {
@@ -188,7 +188,7 @@ export function SetupPhase() {
                     size="icon"
                     className="h-9 w-9"
                     onClick={() => handlePlayerCountChange(1)}
-                    disabled={playerCount >= 10}
+                    disabled={playerCount >= 12}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -327,6 +327,7 @@ export function SetupPhase() {
                     [
                       "merlin",
                       "percival",
+                      "unfaithful_servant",
                       "assassin",
                       "morgana",
                       "mordred",
