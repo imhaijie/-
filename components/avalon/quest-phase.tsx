@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, Skull, Swords, ChevronRight, Minus, Plus, AlertTriangle, Info } from "lucide-react";
+import { Shield, Skull, Swords, ChevronRight, Minus, Plus, AlertTriangle } from "lucide-react";
 import { useGame } from "@/lib/avalon/store";
 import { ROLE_INFO } from "@/lib/avalon/types";
+import { QuestTracker } from "./quest-tracker";
 
 export function QuestPhase() {
   const { state, dispatch } = useGame();
