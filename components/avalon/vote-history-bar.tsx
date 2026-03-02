@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useGame } from "@/lib/avalon/store";
 import {
   ThumbsUp,
   ThumbsDown,
   Crown,
   Users,
-  ChevronDown,
-  ChevronUp,
   Shield,
   Skull,
 } from "lucide-react";
@@ -16,7 +13,6 @@ import { QUEST_TEAM_SIZE } from "@/lib/avalon/types";
 
 export function VoteHistoryBar() {
   const { state, voteHistory } = useGame();
-  const [expanded, setExpanded] = useState(false);
 
   const currentQuest = state.currentQuest;
   const leader = state.players[state.currentLeaderIndex];
@@ -34,10 +30,10 @@ export function VoteHistoryBar() {
 
   return (
     <div className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      {/* Main bar - always visible */}
-      <div className="flex items-center gap-2 px-3 py-2 lg:px-4">
-        {/* Quest progress */}
-        <div className="flex items-center gap-1">
+      {/* Main bar - current round info with larger display */}
+      <div className="flex items-center gap-4 px-4 py-3 lg:px-6">
+        {/* Quest progress - larger circles */}
+        <div className="flex items-center gap-2">
           {[1, 2, 3, 4, 5].map((q) => {
             const result = questResults[q - 1];
             const isActive = q === currentQuest;
@@ -46,7 +42,7 @@ export function VoteHistoryBar() {
             return (
               <div
                 key={q}
-                className={`flex h-8 w-8 flex-col items-center justify-center rounded-full text-xs font-bold transition-all lg:h-10 lg:w-10 ${
+                className={`flex h-12 w-12 flex-col items-center justify-center rounded-full font-bold transition-all lg:h-14 lg:w-14 ${
                   result === "success"
                     ? "bg-good/20 text-good"
                     : result === "fail"
@@ -58,13 +54,13 @@ export function VoteHistoryBar() {
                 title={`第${q}轮: ${size}人`}
               >
                 {result === "success" ? (
-                  <Shield className="h-4 w-4" />
+                  <Shield className="h-6 w-6 lg:h-7 lg:w-7" />
                 ) : result === "fail" ? (
-                  <Skull className="h-4 w-4" />
+                  <Skull className="h-6 w-6 lg:h-7 lg:w-7" />
                 ) : (
                   <>
-                    <span className="text-[10px] leading-none">{q}</span>
-                    <span className="text-[8px] leading-none opacity-70">{size}人</span>
+                    <span className="text-lg font-bold leading-none lg:text-xl">{size}</span>
+                    <span className="text-[10px] leading-none opacity-70">人</span>
                   </>
                 )}
               </div>
@@ -73,148 +69,153 @@ export function VoteHistoryBar() {
         </div>
 
         {/* Divider */}
-        <div className="h-6 w-px bg-border" />
+        <div className="h-10 w-px bg-border" />
 
-        {/* Current round info */}
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="flex items-center gap-1 text-xs lg:text-sm">
-            <Crown className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium text-foreground">
+        {/* Current round info - larger */}
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <div className="flex items-center gap-2 text-base lg:text-lg">
+            <Crown className="h-5 w-5 text-primary lg:h-6 lg:w-6" />
+            <span className="font-semibold text-foreground">
               {leader?.name}
             </span>
           </div>
-          <div className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5">
-            <Users className="h-3 w-3 text-primary" />
-            <span className="text-xs font-bold text-primary">{teamSize}人</span>
+          <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-1.5">
+            <Users className="h-5 w-5 text-primary" />
+            <span className="text-lg font-bold text-primary lg:text-xl">{teamSize}人出征</span>
           </div>
         </div>
 
-        {/* Vote reject counter */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">投票:</span>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className={`h-2 w-2 rounded-full transition-all ${
-                i <= state.consecutiveRejects
-                  ? i === 5
-                    ? "bg-evil"
-                    : "bg-primary"
-                  : "bg-secondary"
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Expand toggle */}
-        {voteHistory.length > 0 && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            {expanded ? (
-              <>
-                收起
-                <ChevronUp className="h-3 w-3" />
-              </>
-            ) : (
-              <>
-                票型
-                <ChevronDown className="h-3 w-3" />
-              </>
-            )}
-          </button>
-        )}
-      </div>
-
-      {/* Expanded vote history */}
-      {expanded && voteHistory.length > 0 && (
-        <div className="max-h-64 overflow-y-auto border-t border-border bg-card/50 px-3 py-2 lg:px-4">
-          <div className="space-y-3">
-            {Object.entries(votesByQuest).map(([questNum, votes]) => (
-              <div key={questNum}>
-                <div className="mb-1.5 flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    第 {questNum} 轮
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                <div className="space-y-1.5">
-                  {votes.map((vote, idx) => (
-                    <div
-                      key={`${questNum}-${idx}`}
-                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
-                        vote.approved
-                          ? "bg-good/5 border border-good/20"
-                          : "bg-evil/5 border border-evil/20"
-                      }`}
-                    >
-                      {/* Leader */}
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Crown className="h-3 w-3 text-primary" />
-                        <span className="font-medium">{vote.leaderName}</span>
-                      </div>
-
-                      {/* Team */}
-                      <div className="min-w-0 flex-1 truncate text-muted-foreground">
-                        {vote.teamMemberNames.join(", ")}
-                      </div>
-
-                      {/* Vote result */}
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="flex items-center gap-0.5 text-good">
-                          <ThumbsUp className="h-3 w-3" />
-                          {vote.approveCount}
-                        </span>
-                        <span className="flex items-center gap-0.5 text-evil">
-                          <ThumbsDown className="h-3 w-3" />
-                          {vote.rejectCount}
-                        </span>
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                            vote.approved
-                              ? "bg-good/20 text-good"
-                              : "bg-evil/20 text-evil"
-                          }`}
-                        >
-                          {vote.approved ? "通过" : "否决"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        {/* Vote reject counter - larger */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground lg:text-base">连续否决:</span>
+          <div className="flex items-center gap-1.5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className={`h-4 w-4 rounded-full transition-all lg:h-5 lg:w-5 ${
+                  i <= state.consecutiveRejects
+                    ? i === 5
+                      ? "bg-evil"
+                      : "bg-primary"
+                    : "bg-secondary"
+                }`}
+              />
             ))}
           </div>
+        </div>
+      </div>
 
-          {/* Per-player vote breakdown */}
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
-              个人票型统计
-            </p>
-            <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-3">
-              {state.players.map((player) => {
-                const playerVotes = voteHistory.map((v) => v.votes[player.id]);
-                const approves = playerVotes.filter((v) => v === "approve").length;
-                const rejects = playerVotes.filter((v) => v === "reject").length;
-
-                return (
-                  <div
-                    key={player.id}
-                    className="flex items-center justify-between rounded-md bg-secondary/50 px-2 py-1"
-                  >
-                    <span className="text-xs font-medium text-foreground">
-                      {player.id + 1}. {player.name}
+      {/* Vote history - always expanded, larger text */}
+      {voteHistory.length > 0 && (
+        <div className="max-h-96 overflow-y-auto border-t border-border bg-card/50 px-4 py-4 lg:px-6">
+          <div className="space-y-5">
+            {Object.entries(votesByQuest).map(([questNum, votes]) => {
+              const questResult = questResults[Number(questNum) - 1];
+              
+              return (
+                <div key={questNum}>
+                  {/* Quest header with result */}
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="text-base font-bold text-foreground lg:text-lg">
+                      第 {questNum} 轮
                     </span>
-                    <div className="flex items-center gap-1 text-[10px]">
-                      <span className="text-good">{approves}</span>
-                      <span className="text-muted-foreground">/</span>
-                      <span className="text-evil">{rejects}</span>
-                    </div>
+                    {questResult && (
+                      <span
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-sm font-semibold lg:text-base ${
+                          questResult === "success"
+                            ? "bg-good/20 text-good"
+                            : "bg-evil/20 text-evil"
+                        }`}
+                      >
+                        {questResult === "success" ? (
+                          <>
+                            <Shield className="h-4 w-4 lg:h-5 lg:w-5" />
+                            任务成功
+                          </>
+                        ) : (
+                          <>
+                            <Skull className="h-4 w-4 lg:h-5 lg:w-5" />
+                            任务失败
+                          </>
+                        )}
+                      </span>
+                    )}
+                    <div className="h-px flex-1 bg-border" />
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Vote records */}
+                  <div className="space-y-3">
+                    {votes.map((vote, idx) => (
+                      <div
+                        key={`${questNum}-${idx}`}
+                        className={`rounded-xl border-2 p-4 ${
+                          vote.approved
+                            ? "border-good/40 bg-good/5"
+                            : "border-evil/40 bg-evil/5"
+                        }`}
+                      >
+                        {/* Leader and team */}
+                        <div className="mb-3 flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Crown className="h-5 w-5 text-primary" />
+                            <span className="text-base font-bold text-foreground lg:text-lg">
+                              {vote.leaderName}
+                            </span>
+                          </div>
+                          <span className="text-lg text-muted-foreground">{">"}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {vote.teamMemberNames.map((name, i) => (
+                              <span
+                                key={i}
+                                className="rounded-lg bg-secondary px-3 py-1 text-sm font-semibold text-foreground lg:text-base"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                          <span
+                            className={`ml-auto rounded-lg px-3 py-1 text-base font-bold lg:text-lg ${
+                              vote.approved
+                                ? "bg-good/20 text-good"
+                                : "bg-evil/20 text-evil"
+                            }`}
+                          >
+                            {vote.approved ? "通过" : "否决"}
+                          </span>
+                        </div>
+
+                        {/* Individual votes - who voted what */}
+                        <div className="flex flex-wrap gap-2">
+                          {state.players.map((player) => {
+                            const playerVote = vote.votes[player.id];
+                            if (!playerVote) return null;
+                            const isApprove = playerVote === "approve";
+
+                            return (
+                              <div
+                                key={player.id}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium lg:text-base ${
+                                  isApprove
+                                    ? "bg-good/20 text-good"
+                                    : "bg-evil/20 text-evil"
+                                }`}
+                              >
+                                {isApprove ? (
+                                  <ThumbsUp className="h-4 w-4 lg:h-5 lg:w-5" />
+                                ) : (
+                                  <ThumbsDown className="h-4 w-4 lg:h-5 lg:w-5" />
+                                )}
+                                <span>{player.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
