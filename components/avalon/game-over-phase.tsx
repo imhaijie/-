@@ -16,16 +16,23 @@ import {
 } from "lucide-react";
 import { ROLE_INFO } from "@/lib/avalon/types";
 import { useGame } from "@/lib/avalon/store";
+import { resetGameSession } from "@/lib/avalon/sync";
 import { useState } from "react";
 
 export function GameOverPhase() {
   const { state, dispatch } = useGame();
   const [showLog, setShowLog] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const isGoodWin = state.winner === "good";
 
-  const handleNewGame = () => {
-    dispatch({ type: "RESET_GAME" });
+  const handleNewGame = async () => {
+    setIsResetting(true);
+    const success = await resetGameSession();
+    if (success) {
+      dispatch({ type: "RESET_GAME" });
+    }
+    setIsResetting(false);
   };
 
   return (
@@ -203,9 +210,18 @@ export function GameOverPhase() {
         </div>
 
         {/* New game button */}
-        <Button className="w-full" size="lg" onClick={handleNewGame}>
-          <RotateCcw className="mr-2 h-5 w-5" />
-          开始新游戏
+        <Button className="w-full" size="lg" onClick={handleNewGame} disabled={isResetting}>
+          {isResetting ? (
+            <>
+              <RotateCcw className="mr-2 h-5 w-5 animate-spin" />
+              重置中...
+            </>
+          ) : (
+            <>
+              <RotateCcw className="mr-2 h-5 w-5" />
+              开始新游戏
+            </>
+          )}
         </Button>
       </div>
     </div>

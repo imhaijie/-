@@ -9,17 +9,33 @@ import {
   ChevronUp,
   Settings,
   Clock,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { useGame } from "@/lib/avalon/store";
+import { resetGameSession } from "@/lib/avalon/sync";
 
 export function HostControls() {
-  const { state, snapshots, restoreToSnapshot } = useGame();
+  const { state, dispatch, snapshots, restoreToSnapshot } = useGame();
   const [showHistory, setShowHistory] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleRestore = (snapshotId: string) => {
     restoreToSnapshot(snapshotId);
     setShowHistory(false);
+  };
+
+  const handleResetGame = async () => {
+    setIsResetting(true);
+    const success = await resetGameSession();
+    if (success) {
+      dispatch({ type: "RESET_GAME" });
+    }
+    setIsResetting(false);
+    setShowResetConfirm(false);
+    setShowControls(false);
   };
 
   // Format timestamp
@@ -53,6 +69,15 @@ export function HostControls() {
                 </span>
               )}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setShowResetConfirm(true)}
+            >
+              <RefreshCw className="h-4 w-4" />
+              重置游戏
+            </Button>
           </div>
         )}
         <Button
@@ -67,6 +92,61 @@ export function HostControls() {
           )}
         </Button>
       </div>
+
+      {/* Reset confirmation modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-border bg-destructive/5 px-4 py-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">确认重置游戏</h2>
+                <p className="text-xs text-muted-foreground">此操作无法撤销</p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">
+                重置游戏将清除所有当前游戏数据，包括玩家信息、角色分配和游戏进度。所有访问此页面的用户都将返回到游戏设置界面。
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2 border-t border-border px-4 py-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={isResetting}
+              >
+                取消
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 gap-2"
+                onClick={handleResetGame}
+                disabled={isResetting}
+              >
+                {isResetting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    重置中...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    确认重置
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History modal */}
       {showHistory && (
