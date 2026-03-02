@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Cinzel } from 'next/font/google'
+import { Noto_Sans_SC, Noto_Serif_SC } from 'next/font/google'
 
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const cinzel = Cinzel({ subsets: ['latin'], variable: '--font-cinzel' })
+const notoSans = Noto_Sans_SC({ 
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-sans' 
+})
+const notoSerif = Noto_Serif_SC({ 
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-serif' 
+})
 
 export const metadata: Metadata = {
   title: 'Avalon - 阿瓦隆游戏助手',
@@ -26,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={`${inter.variable} ${cinzel.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${notoSans.variable} ${notoSerif.variable} font-sans antialiased`}>{children}</body>
     </html>
   )
 }
