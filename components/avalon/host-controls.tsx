@@ -11,7 +11,10 @@ import {
   Clock,
   RefreshCw,
   AlertTriangle,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
+import Link from "next/link";
 import { useGame } from "@/lib/avalon/store";
 import { resetGameSession } from "@/lib/avalon/sync";
 
@@ -69,6 +72,17 @@ export function HostControls() {
                 </span>
               )}
             </Button>
+            <Link href="/player" target="_blank">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                玩家视图
+                <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground" />
+              </Button>
+            </Link>
             <Button
               variant="outline"
               size="sm"
