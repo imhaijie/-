@@ -1,17 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Noto_Sans_SC, Noto_Serif_SC } from 'next/font/google'
+import { Inter } from 'next/font/google'
 
 import './globals.css'
 
-const notoSans = Noto_Sans_SC({ 
+const inter = Inter({ 
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
   variable: '--font-sans' 
-})
-const notoSerif = Noto_Serif_SC({ 
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-serif' 
 })
 
 export const metadata: Metadata = {
@@ -34,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={`${notoSans.variable} ${notoSerif.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${inter.variable} font-sans antialiased`}>{children}</body>
     </html>
   )
 }
