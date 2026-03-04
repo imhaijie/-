@@ -6,6 +6,7 @@ import {
   fetchGameState,
   subscribeToGameState,
 } from "@/lib/avalon/sync";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getVoteHistory } from "@/lib/avalon/store";
 import type { GameState, VoteHistoryEntry, QuestResult } from "@/lib/avalon/types";
 import { QUEST_TEAM_SIZE, DOUBLE_FAIL_QUESTS, ROLE_INFO } from "@/lib/avalon/types";
@@ -432,6 +433,7 @@ export default function PlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isConfigured, setIsConfigured] = useState(true);
 
   const voteHistory = useMemo(() => {
     if (!state) return [];
@@ -442,10 +444,23 @@ export default function PlayerPage() {
   useEffect(() => {
     async function loadState() {
       setIsLoading(true);
-      const savedState = await fetchGameState();
-      if (savedState) {
-        setState(savedState);
-        setLastUpdated(new Date());
+      
+      // Check if Supabase is configured
+      if (!isSupabaseConfigured()) {
+        setIsConfigured(false);
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const savedState = await fetchGameState();
+        if (savedState) {
+          setState(savedState);
+          setLastUpdated(new Date());
+        }
+      } catch (error) {
+        console.warn("[v0] Failed to fetch game state:", error);
+        setIsConfigured(false);
       }
       setIsLoading(false);
     }
@@ -455,6 +470,8 @@ export default function PlayerPage() {
 
   // Subscribe to real-time updates
   useEffect(() => {
+    if (!isConfigured) return;
+    
     const unsubscribe = subscribeToGameState((newState) => {
       setState(newState);
       setLastUpdated(new Date());
@@ -470,7 +487,7 @@ export default function PlayerPage() {
       unsubscribe();
       clearInterval(heartbeat);
     };
-  }, []);
+  }, [isConfigured]);
 
   if (isLoading) {
     return (
@@ -480,6 +497,32 @@ export default function PlayerPage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">正在加载游戏状态...</p>
           </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  if (!isConfigured) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="dark">
+        <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-background p-6">
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-full bg-amber-500/10 p-6">
+              <WifiOff className="h-12 w-12 text-amber-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">数据库未配置</h1>
+            <p className="text-center text-muted-foreground">
+              Supabase 数据库尚未配置，无法使用实时同步功能。
+              <br />
+              请联系管理员配置数据库连接。
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            返回主持人页面
+          </Link>
         </div>
       </ThemeProvider>
     );

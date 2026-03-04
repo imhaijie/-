@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { GameState } from "./types";
 import { createInitialState } from "./store";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,9 +11,16 @@ const DEFAULT_SESSION_ID = "default";
 // Lazy-initialized Supabase client (avoid build-time errors)
 let supabaseClient: SupabaseClient | null = null;
 
-function getSupabase(): SupabaseClient {
+function getSupabase(): SupabaseClient | null {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
   if (!supabaseClient) {
-    supabaseClient = createClient();
+    try {
+      supabaseClient = createClient();
+    } catch {
+      return null;
+    }
   }
   return supabaseClient;
 }
@@ -21,6 +28,10 @@ function getSupabase(): SupabaseClient {
 // Fetch current game state from database
 export async function fetchGameState(): Promise<GameState | null> {
   const supabase = getSupabase();
+  if (!supabase) {
+    console.warn("[v0] Supabase not configured, using local state only");
+    return null;
+  }
   const { data, error } = await supabase
     .from("game_sessions")
     .select("game_state")
@@ -42,6 +53,9 @@ export async function fetchGameState(): Promise<GameState | null> {
 // Save game state to database
 export async function saveGameState(state: GameState): Promise<boolean> {
   const supabase = getSupabase();
+  if (!supabase) {
+    return true; // Silently succeed if not configured
+  }
   const { error } = await supabase
     .from("game_sessions")
     .upsert({
@@ -71,6 +85,9 @@ export function subscribeToGameState(
   onStateChange: (state: GameState) => void
 ): () => void {
   const supabase = getSupabase();
+  if (!supabase) {
+    return () => {}; // No-op unsubscribe if not configured
+  }
   const channel = supabase
     .channel("game_sessions_changes")
     .on(
