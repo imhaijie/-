@@ -3,14 +3,24 @@
 import { createClient } from "@/lib/supabase/client";
 import type { GameState } from "./types";
 import { createInitialState } from "./store";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Default session ID - single global game session
 const DEFAULT_SESSION_ID = "default";
 
-const supabase = createClient();
+// Lazy-initialized Supabase client (avoid build-time errors)
+let supabaseClient: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient {
+  if (!supabaseClient) {
+    supabaseClient = createClient();
+  }
+  return supabaseClient;
+}
 
 // Fetch current game state from database
 export async function fetchGameState(): Promise<GameState | null> {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from("game_sessions")
     .select("game_state")
@@ -31,6 +41,7 @@ export async function fetchGameState(): Promise<GameState | null> {
 
 // Save game state to database
 export async function saveGameState(state: GameState): Promise<boolean> {
+  const supabase = getSupabase();
   const { error } = await supabase
     .from("game_sessions")
     .upsert({
@@ -59,6 +70,7 @@ export async function resetGameSession(): Promise<boolean> {
 export function subscribeToGameState(
   onStateChange: (state: GameState) => void
 ): () => void {
+  const supabase = getSupabase();
   const channel = supabase
     .channel("game_sessions_changes")
     .on(
